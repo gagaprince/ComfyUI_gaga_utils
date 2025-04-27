@@ -7,6 +7,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {}
 # Main nodes for all users
 NODE_MODULES = [
     ".comfyui_string",
+    ".comfyui_file",
 ]
 
 def load_nodes(module_name: str):
