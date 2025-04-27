@@ -80,21 +80,3 @@ class _:
                 dirs[:] = []  # 清空子目录列表以停止递归
 
         return file_list
-
-@register_node("GagaBatchStringReplace", "batchStringReplace")
-class _:
-    CATEGORY = "gaga"
-    INPUT_TYPES = lambda: {
-        "required": {
-            "string": ("STRING", {"default": ""}),
-            "replace": ("STRING", {"default": ""}),
-            "target": ("STRING", {"default": ""})
-        }
-    }
-    RETURN_TYPES = ("STRING",)
-    FUNCTION = "execute"
-
-    def execute(self, string: str, replace, target):
-        str_list = string.splitlines()
-        ret = list(map(lambda line: line.replace(replace, target), str_list))
-        return ("\n".join(ret),)

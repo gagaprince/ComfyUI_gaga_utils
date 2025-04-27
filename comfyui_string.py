@@ -70,3 +70,21 @@ class _:
 
     def execute(self, string_list, index):
         return (string_list[index],)
+
+@register_node("GagaBatchStringReplace", "batchStringReplace")
+class _:
+    CATEGORY = "gaga"
+    INPUT_TYPES = lambda: {
+        "required": {
+            "string": ("STRING", {"default": ""}),
+            "replace": ("STRING", {"default": ""}),
+            "target": ("STRING", {"default": ""})
+        }
+    }
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "execute"
+
+    def execute(self, string: str, replace, target):
+        str_list = string.splitlines()
+        ret = list(map(lambda line: line.replace(replace, target), str_list))
+        return ("\n".join(ret),)
