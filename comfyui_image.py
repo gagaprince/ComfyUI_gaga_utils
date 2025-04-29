@@ -27,7 +27,9 @@ class _:
             "template": ("STRING", {"default": "", "multiline": True, "label": "输入{prompt}xxx 会最终写入保存的图片中"})
         }
     }
-    RETURN_TYPES = ("STRING", )
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("info", "filepath")
+    OUTPUT_NODE = True
     FUNCTION = "execute"
 
     def execute(self, images, filename_prefix, prompt, template):
@@ -49,6 +51,8 @@ class _:
 
         if not os.path.exists(os.path.dirname(output_path)):
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+        file_path=""
 
         for index, image in enumerate(images):
             i = 255.0 * image.cpu().numpy()
@@ -72,6 +76,6 @@ class _:
                 pnginfo=metadata,
                 compress_level=4,
             )
-        return (info,)
+        return (info, file_path, )
 
 
