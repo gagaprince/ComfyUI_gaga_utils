@@ -1,9 +1,13 @@
 import subprocess
-import os
-from PIL import Image
+from PIL import Image, ImageOps
 from PIL.PngImagePlugin import PngInfo
 import numpy as np
 import folder_paths
+import torch
+import hashlib
+import os
+import urllib.request
+import urllib.error
 
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
@@ -159,3 +163,134 @@ class _:
         return (info, file_path, )
 
 
+@register_node("GagaGetImageInfoByUpload", "getImageInfoByUpload")
+class _:
+    CATEGORY = "gaga"
+    @classmethod
+    def INPUT_TYPES(s):
+        input_dir = folder_paths.get_input_directory()
+        files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
+        return {"required":
+                    {"image": (sorted(files), {"image_upload": True})},
+                }
+    RETURN_TYPES = ("STRING","STRING","IMAGE", "MASK",)
+    RETURN_NAMES = ("info","prompt","image","mask",)
+    OUTPUT_NODE = True
+    FUNCTION = "execute"
+
+    def execute(self, image):
+        image_path = folder_paths.get_annotated_filepath(image)
+        imgF = Image.open(image_path)
+        metaData = imgF.info
+        prompt = self.parsePrompt(metaData)
+
+        img = ImageOps.exif_transpose(imgF)
+        image = img.convert("RGB")
+        image = np.array(image).astype(np.float32) / 255.0
+        image = torch.from_numpy(image)[None,]
+        if 'A' in img.getbands():
+            mask = np.array(img.getchannel('A')).astype(np.float32) / 255.0
+            mask = 1. - torch.from_numpy(mask)
+        else:
+            mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
+
+        return (metaData,prompt,image, mask.unsqueeze(0),)
+
+    def parsePrompt(self, meta):
+        try:
+            info = meta["parameters"]
+            prompt = info.split("\nNegative")[0]
+            return prompt
+        except Exception as e:
+            print(f"发生错误：{str(e)}")
+            return ""
+
+
+@register_node("GagaGetImageInfoWithUrl", "getImageInfoWithUrl")
+class _:
+    CATEGORY = "gaga"
+    INPUT_TYPES = lambda: {
+        "required": {
+            "url": ("STRING", {"default": "", "multiline": True}),
+            "save_path":("STRING", {"default": ""}),
+        }
+    }
+    RETURN_TYPES = ("STRING","STRING","IMAGE", "MASK","STRING",)
+    RETURN_NAMES = ("info","prompt","image","mask","savepath")
+    OUTPUT_NODE = True
+    FUNCTION = "execute"
+
+    def execute(self, url, save_path):
+        # 先下载图片到 目标位置
+        tmp_path = folder_paths.get_temp_directory()
+        if save_path is not None and save_path != "":
+            tmp_path = save_path
+
+        image_path = self.download_img(url, tmp_path)
+        # image_path = folder_paths.get_annotated_filepath(image)
+        imgF = Image.open(image_path)
+        metaData = imgF.info
+        prompt = self.parsePrompt(metaData)
+
+        img = ImageOps.exif_transpose(imgF)
+        image = img.convert("RGB")
+        image = np.array(image).astype(np.float32) / 255.0
+        image = torch.from_numpy(image)[None,]
+        if 'A' in img.getbands():
+            mask = np.array(img.getchannel('A')).astype(np.float32) / 255.0
+            mask = 1. - torch.from_numpy(mask)
+        else:
+            mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
+
+        return (metaData,prompt,image, mask.unsqueeze(0),image_path,)
+
+    def download_img(self, url, tmp_path):
+        """
+        使用纯标准库实现的下载器
+        功能：下载文件并以URL哈希值命名
+
+        参数:
+            url (str): 要下载的文件URL
+            save_dir (str): 文件保存目录
+            hash_algorithm (str): 哈希算法，默认md5，可选 sha1/sha256等
+        """
+        try:
+            # 生成文件名哈希值
+            hash_obj = hashlib.new("md5")
+            hash_obj.update(url.encode('utf-8'))
+            filename = hash_obj.hexdigest()
+
+            # 发起请求
+            with urllib.request.urlopen(url) as resp:
+                extension = '.png'
+
+                # 创建保存目录
+                os.makedirs(tmp_path, exist_ok=True)
+
+                # 构建保存路径
+                save_path = os.path.join(tmp_path, f"{filename}{extension}")
+
+                # 写入文件
+                with open(save_path, 'wb') as f:
+                    f.write(resp.read())
+
+                print(f"文件下载成功: {save_path}")
+                return save_path
+
+        except urllib.error.URLError as e:
+            print(f"网络错误: {e.reason}")
+        except ValueError as e:
+            print(f"URL格式错误: {str(e)}")
+        except IOError as e:
+            print(f"文件操作失败: {str(e)}")
+        except Exception as e:
+            print(f"未知错误: {str(e)}")
+
+    def parsePrompt(self, meta):
+        try:
+            info = meta["parameters"]
+            prompt = info.split("\nNegative")[0]
+            return prompt
+        except Exception as e:
+            print(f"发生错误：{str(e)}")
+            return ""
