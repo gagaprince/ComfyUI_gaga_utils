@@ -9,6 +9,7 @@ NODE_MODULES = [
     ".comfyui_string",
     ".comfyui_file",
     ".comfyui_image",
+    ".comfyui_code",
 ]
 
 def load_nodes(module_name: str):
