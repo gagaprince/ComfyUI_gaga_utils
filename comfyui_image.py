@@ -8,6 +8,7 @@ import hashlib
 import os
 import urllib.request
 import urllib.error
+from .utils import get_save_image_path
 
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
@@ -294,3 +295,58 @@ class _:
         except Exception as e:
             print(f"发生错误：{str(e)}")
             return ""
+
+
+@register_node("GagaSaveImageToPath", "saveImageToPath")
+class _:
+    CATEGORY = "gaga"
+    INPUT_TYPES = lambda: {
+        "required": {
+            "images": ("IMAGE",),
+            "filename_prefix": ("STRING", {"default": "ComfyUI"}),
+            "save_path": ("STRING", {"default": "", "multiline": True}),
+        }
+    }
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("filepath",)
+    OUTPUT_NODE = True
+    FUNCTION = "execute"
+
+    def execute(self, images, filename_prefix, save_path):
+
+        output_dir = folder_paths.get_output_directory()
+        if save_path is not None and save_path != "":
+            output_dir = save_path
+        output_path = os.path.join(output_dir, filename_prefix)
+
+        if not os.path.exists(os.path.dirname(output_path)):
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+        file_path = ""
+
+        (
+            full_output_folder,
+            filename,
+            counter,
+            subfolder,
+            filename_prefix,
+        ) = get_save_image_path(
+            filename_prefix, output_dir, images[0].shape[1], images[0].shape[0]
+        )
+
+        for index, image in enumerate(images):
+            i = 255.0 * image.cpu().numpy()
+            img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+
+            base_filename = filename
+            base_filename += f"_{counter:05}_"
+            file = base_filename + ".png"
+            file_path = os.path.join(full_output_folder, file)
+            print("file_path:", file_path)
+
+            img.save(
+                file_path,
+                compress_level=4,
+            )
+            counter += 1
+        return (file_path,)
