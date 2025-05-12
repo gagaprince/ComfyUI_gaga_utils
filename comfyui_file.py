@@ -80,3 +80,28 @@ class _:
                 dirs[:] = []  # 清空子目录列表以停止递归
 
         return file_list
+
+
+@register_node("GagaGetDirList", "getDirList")
+class _:
+    CATEGORY = "gaga"
+    INPUT_TYPES = lambda: {
+        "required": {
+            "dir_path": ("STRING", {"default": ""})
+        }
+    }
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "execute"
+
+    def execute(self, dir_path):
+        dir_list = self.get_dirs(dir_path)
+        return ("\n".join(dir_list), )
+
+    def get_dirs(self,
+            directory: str,
+    ) -> List[str]:
+        # 检查目录有效性
+        if not os.path.isdir(directory):
+            return []
+        with os.scandir(directory) as entries:
+            return [entry.path for entry in entries if entry.is_dir()]
