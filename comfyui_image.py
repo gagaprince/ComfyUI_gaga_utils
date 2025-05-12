@@ -350,3 +350,25 @@ class _:
             )
             counter += 1
         return (file_path,)
+
+
+@register_node("GagaGetImageWithPath", "getImageWithPath")
+class _:
+    CATEGORY = "gaga"
+    INPUT_TYPES = lambda: {
+        "required": {
+            "file_path": ("STRING",),
+        }
+    }
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("image",)
+    FUNCTION = "execute"
+
+    def execute(self, file_path):
+        imgF = Image.open(file_path)
+        img = ImageOps.exif_transpose(imgF)
+        image = img.convert("RGB")
+        image = np.array(image).astype(np.float32) / 255.0
+        image = torch.from_numpy(image)[None,]
+        return (image,)
+
