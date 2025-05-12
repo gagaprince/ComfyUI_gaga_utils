@@ -39,7 +39,8 @@ class _:
             "split_by": ("STRING", {"default": ",", "multiline": False})
         }
     }
-    RETURN_TYPES = ("STRING_LIST",)
+    RETURN_TYPES = (string_arr,)
+    RETURN_NAMES = ("string_arr",)
     FUNCTION = "execute"
 
     def execute(self, string: str, split_by: str):
